@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comanda Digital Bahia Chill</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="Data.css">
+</head>
+<body class="min-h-screen">
+    <!-- Login Screen -->
+    <div id="login-screen" class="flex flex-col items-center justify-center min-h-screen p-4 login-container">
+        <div class="w-full max-w-md rounded-lg shadow-md overflow-hidden fade-in">
+            <div class="py-8 px-8 text-center">
+                <h1 class="text-3xl font-bold text-white">BAHIA CHILL</h1>
+                <p class="text-white opacity-90 mt-1">Comanda Digital</p>
+            </div>
+            
+            <div class="p-8">
+                <div class="mb-6">
+                    <label for="username" class="block text-white text-sm font-medium mb-2">Usuario</label>
+                    <select id="username" class="w-full px-4 py-2 login-select rounded-md focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent">
+                        <option value="" disabled selected class="text-gray-700">Seleccione un usuario</option>
+                        <option value="JUAN">JUAN</option>
+                        <option value="SANTIAGO">SANTIAGO</option>
+                        <option value="SOFIA">SOFIA</option>
+                        <option value="JULIAN">JULIAN</option>
+                        <option value="INVITADO">INVITADO</option>
+                    </select>
+                </div>
+                
+                <div class="mb-6">
+                    <label for="password" class="block text-white text-sm font-medium mb-2">Contraseña</label>
+                    <div class="relative">
+                        <input type="password" id="password" maxlength="4" inputmode="numeric" class="w-full px-4 py-2 login-input rounded-md focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent" placeholder="••••">
+                        <i id="toggle-password" class="password-toggle fas fa-eye"></i>
+                        <div id="password-dots" class="absolute right-10 top-1/2 transform -translate-y-1/2 flex">
+                            <!-- Dots will be added here by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="login-btn" class="w-full login-btn py-2 px-4 rounded-md font-medium transition duration-200 flex items-center justify-center">
+                    <span id="login-text">Ingresar</span>
+                    <div id="login-spinner" class="spinner ml-2 hidden"></div>
+                </button>
+                
+                <div id="login-error" class="mt-4 text-red-300 text-sm text-center hidden">
+                    Credenciales incorrectas. Intente nuevamente.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Screen (Hidden by default) -->
+    <div id="app-screen" class="hidden min-h-screen">
+        <!-- Header -->
+        <header class="bg-primary text-white py-4 px-6 shadow-md">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold">BAHIA CHILL</h1>
+                    <span class="ml-2 text-sm opacity-80">Comanda Digital</span>
+                </div>
+                <div class="flex items-center">
+                    <span id="current-user" class="mr-4 text-sm font-medium"></span>
+                    <button id="logout-btn" class="bg-white text-primary py-1 px-3 rounded text-sm font-medium hover:bg-opacity-90 transition duration-200">
+                        Salir
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="p-4">
+            <!-- Table Selection -->
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold text-gray-700 mb-3">Seleccione una mesa</h2>
+                <div class="custom-select">
+                    <select id="table-select" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="" disabled selected>Seleccione una mesa</option>
+                        <option value="1">Mesa 1</option>
+                        <option value="2">Mesa 2</option>
+                        <option value="3">Mesa 3</option>
+                        <option value="4">Mesa 4</option>
+                        <option value="5">Mesa 5</option>
+                        <option value="6">VIP</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Order Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Product Selection -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-700">Menú</h2>
+                            <div class="relative w-full">
+                                <input type="text" id="product-search" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled" placeholder="Buscar producto..." disabled>
+                                <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                                <div id="search-results" class="search-results hidden"></div>
+                            </div>
+                        </div>
+                                                        
+                        <!-- Products Grid (Hidden now, only search results will show) -->
+                        <div id="products-grid" class="hidden">
+                            <!-- Products will be shown only in search results -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Order Summary -->
+                <div>
+                    <div class="bg-white rounded-lg shadow-md p-4 sticky top-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold text-gray-700">Resumen del Pedido</h2>
+                            <span id="current-table" class="px-2 py-1 bg-primary text-white text-sm rounded">Mesa no seleccionada</span>
+                        </div>
+                                                        
+                        <!-- Order Items -->
+                        <div id="order-items" class="mb-4 max-h-96 overflow-y-auto">
+                            <div class="text-center text-gray-500 py-4">
+                                No hay productos agregados
+                            </div>
+                        </div>
+                                                        
+                        <!-- Order Total -->
+                        <div class="border-t border-gray-200 pt-3">
+                            <div class="flex justify-between text-lg font-semibold">
+                                <span>Total:</span>
+                                <span id="total">$0</span>
+                            </div>
+                        </div>
+                                                        
+                        <!-- Customer Info -->
+                        <div class="mt-4">
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">Datos del cliente (opcional)</h3>
+                            <input type="text" id="customer-name" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-2" placeholder="Nombre completo">
+                            <select id="customer-id-type" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-2">
+                                <option value="CC">Cédula</option>
+                                <option value="NIT">NIT</option>
+                                <option value="CE">Cédula extranjera</option>
+                            </select>
+                            <input type="text" id="customer-id" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-2" placeholder="Número de identificación">
+                            <input type="text" id="customer-contact" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" placeholder="Teléfono o correo">
+                        </div>
+                                                        
+                        <!-- Action Buttons -->
+                        <div class="mt-6 space-y-2">
+                            <button id="clear-order-btn" class="w-full py-2 px-4 bg-gray-200 text-gray-700 rounded-md font-medium hover:bg-gray-300 transition duration-200">
+                                Limpiar Pedido
+                            </button>
+                            <button id="finalize-order-btn" class="w-full py-2 px-4 btn-primary rounded-md font-medium text-white hover:bg-opacity-90 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <span id="finalize-text">Finalizar Pedido</span>
+                                <div id="finalize-spinner" class="spinner ml-2 hidden"></div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Product Modal (Hidden by default) -->
+    <div id="product-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 fade-in">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 id="modal-product-name" class="text-xl font-semibold text-gray-800"></h3>
+                    <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-gray-700">Precio unitario:</span>
+                        <span id="modal-product-price" class="font-medium"></span>
+                    </div>
+                                    
+                    <div class="mb-4">
+                        <label for="product-quantity" class="block text-gray-700 mb-2">Cantidad</label>
+                        <div class="flex items-center">
+                            <button id="decrement-quantity" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-l-md hover:bg-gray-300">
+                                -
+                            </button>
+                            <input type="number" id="product-quantity" min="1" max="50" value="1" class="w-16 text-center border-t border-b border-gray-300 py-1">
+                            <button id="increment-quantity" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-r-md hover:bg-gray-300">
+                                +
+                            </button>
+                        </div>
+                    </div>
+                                    
+                    <div>
+                        <label for="product-notes" class="block text-gray-700 mb-2">Notas especiales</label>
+                        <textarea id="product-notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Ej: Sin hielo, vaso adicional..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3">
+                    <button id="cancel-modal-btn" class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-md font-medium hover:bg-gray-300 transition duration-200">
+                        Cancelar
+                    </button>
+                    <button id="add-to-order-btn" class="flex-1 py-2 px-4 btn-primary rounded-md font-medium text-white hover:bg-opacity-90 transition duration-200">
+                        <span id="add-to-order-text">Agregar</span>
+                        <div id="add-to-order-spinner" class="spinner ml-2 hidden"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal (Hidden by default) -->
+    <div id="receipt-modal" class="receipt-modal hidden">
+        <div class="receipt-content">
+            <div class="receipt-header text-center">
+                <h1 class="text-2xl font-bold">BAHIA CHILL</h1>
+                <p class="text-sm opacity-90">Comanda Digital</p>
+            </div>
+            
+            <div class="p-6" id="receipt-content">
+                <!-- Receipt content will be inserted here -->
+            </div>
+            
+            <div class="receipt-footer">
+                <p class="text-sm text-gray-600">Gracias por su visita. ¡Vuelva pronto!</p>
+            </div>
+            
+            <div class="p-4 border-t border-gray-200 flex justify-between no-print">
+                <button id="print-receipt-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+                    <i class="fas fa-print mr-2"></i>Imprimir
+                </button>
+                <button id="download-receipt-btn" class="pdf-btn px-4 py-2 bg-primary text-white rounded-md hover:bg-opacity-90 flex items-center justify-center">
+                    <i class="fas fa-download mr-2"></i>
+                    <span class="hidden sm:inline">Descargar PDF</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Selection Modal (Hidden by default) -->
+    <div id="device-modal" class="device-modal hidden">
+        <div class="device-content fade-in">
+            <h2 class="text-lg font-semibold mb-4 text-center">¿Desde qué dispositivo estás descargando?</h2>
+            
+            <div class="mb-4">
+                <div class="device-option" data-device="mobile">
+                    <i class="fas fa-mobile-alt"></i>
+                    <div class="device-option-text">
+                        <div class="device-option-title">Celular</div>
+                        <div class="device-option-desc">Optimizado para pantallas verticales</div>
+                    </div>
+                </div>
+                
+                <div class="device-option" data-device="desktop">
+                    <i class="fas fa-desktop"></i>
+                    <div class="device-option-text">
+                        <div class="device-option-title">Computador</div>
+                        <div class="device-option-desc">Formato estándar horizontal</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="cancel-device-btn" class="w-full py-2 px-4 bg-gray-200 text-gray-700 rounded-md font-medium hover:bg-gray-300 transition duration-200">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="Data.js"></script>
+</body>
+</html>
