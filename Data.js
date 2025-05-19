@@ -64,6 +64,7 @@ let currentProduct = null;
 let editingIndex = null;
 let pdfGenerationTimeout = null;
 let selectedDevice = null;
+let currentDiscount = null;
 
 // DOM Elements
 const loginScreen = document.getElementById('login-screen');
@@ -112,6 +113,16 @@ const printReceiptBtn = document.getElementById('print-receipt-btn');
 const deviceModal = document.getElementById('device-modal');
 const deviceOptions = document.querySelectorAll('.device-option');
 const cancelDeviceBtn = document.getElementById('cancel-device-btn');
+const discountBtn = document.getElementById('discount-btn');
+const discountModal = document.getElementById('discount-modal');
+const discountReasonInput = document.getElementById('discount-reason-input');
+const discountPercentInput = document.getElementById('discount-percent');
+const discountValueInput = document.getElementById('discount-value');
+const discountCancelBtn = document.getElementById('discount-cancel-btn');
+const discountApplyBtn = document.getElementById('discount-apply-btn');
+const discountRow = document.getElementById('discount-row');
+const discountReasonSpan = document.getElementById('discount-reason');
+const discountAmountSpan = document.getElementById('discount-amount');
 
 // Initialize the app
 function init() {
@@ -134,6 +145,11 @@ function init() {
     addToOrderBtn.addEventListener('click', addToOrder);
     downloadReceiptBtn.addEventListener('click', showDeviceSelection);
     printReceiptBtn.addEventListener('click', printReceipt);
+    discountBtn.addEventListener('click', openDiscountModal);
+    discountCancelBtn.addEventListener('click', closeDiscountModal);
+    discountApplyBtn.addEventListener('click', applyDiscount);
+    discountPercentInput.addEventListener('input', syncDiscountPercentValue);
+    discountValueInput.addEventListener('input', syncDiscountValuePercent);
     
     // Device selection
     deviceOptions.forEach(option => {
@@ -165,6 +181,9 @@ function init() {
         }
         if (e.target === deviceModal) {
             deviceModal.classList.add('hidden');
+        }
+        if (e.target === discountModal) {
+            closeDiscountModal();
         }
     });
     
@@ -255,6 +274,7 @@ function handleLogout() {
     currentUser = null;
     currentTable = null;
     currentOrder = [];
+    clearDiscount();
     
     // Reset form fields
     usernameInput.value = '';
@@ -289,12 +309,14 @@ function handleTableSelect() {
             if (confirm('¿Está seguro de cambiar de mesa? Se perderá el pedido actual.')) {
                 selectTable(table);
                 clearOrder();
+                clearDiscount();
             } else {
                 // Revert to previous selection
                 tableSelect.value = currentTable ? currentTable.id : '';
             }
         } else {
             selectTable(table);
+            clearDiscount();
         }
     }
 }
@@ -461,6 +483,8 @@ function updateOrderSummary() {
         orderItems.innerHTML = '<div class="text-center text-gray-500 py-4">No hay productos agregados</div>';
         totalSpan.textContent = '$0';
         finalizeOrderBtn.disabled = true;
+        discountRow.classList.add('hidden');
+        clearDiscount();
         return;
     }
     
@@ -517,7 +541,18 @@ function updateOrderSummary() {
         orderItems.appendChild(orderItem);
     });
     
-    totalSpan.textContent = `$${total.toLocaleString()}`;
+    // Apply discount if exists
+    let discount = 0;
+    if (currentDiscount && currentDiscount.value > 0) {
+        discount = Math.min(currentDiscount.value, total);
+        discountRow.classList.remove('hidden');
+        discountReasonSpan.textContent = currentDiscount.reason;
+        discountAmountSpan.textContent = `- $${discount.toLocaleString()}`;
+    } else {
+        discountRow.classList.add('hidden');
+    }
+    
+    totalSpan.textContent = `$${(total - discount).toLocaleString()}`;
     
     // Add pulse animation to total
     totalSpan.classList.add('pulse');
@@ -576,10 +611,17 @@ function clearOrder() {
         
         setTimeout(() => {
             currentOrder = [];
+            clearDiscount();
             updateOrderSummary();
             orderItems.classList.remove('order-item-remove');
         }, 300);
     }
+}
+
+// Clear discount
+function clearDiscount() {
+    currentDiscount = null;
+    updateOrderSummary();
 }
 
 // Show receipt
@@ -605,6 +647,18 @@ function showReceipt() {
         currentOrder.forEach(item => {
             total += item.product.price * item.quantity;
         });
+        
+        let discountHtml = '';
+        let discount = 0;
+        if (currentDiscount && currentDiscount.value > 0) {
+            discount = Math.min(currentDiscount.value, total);
+            discountHtml = `
+                <div class="flex justify-between text-green-700 mb-2">
+                    <span>Descuento (${currentDiscount.reason}):</span>
+                    <span>-$${discount.toLocaleString()}</span>
+                </div>
+            `;
+        }
         
         // Format date and time
         const now = new Date();
@@ -658,10 +712,12 @@ function showReceipt() {
                     </tbody>
                 </table>
                                             
+                ${discountHtml}
+                                            
                 <div class="border-t border-gray-200 pt-3">
                     <div class="flex justify-between font-semibold text-lg">
                         <span>Total:</span>
-                        <span>$${total.toLocaleString()}</span>
+                        <span>$${(total - discount).toLocaleString()}</span>
                     </div>
                 </div>
                                             
@@ -771,6 +827,19 @@ function downloadReceipt() {
             hour12: true
         }).toUpperCase();
         
+        // Only show discount and final total on the last page
+        let discountHtml = '';
+        let discount = 0;
+        if (pageIndex === totalPages - 1 && currentDiscount && currentDiscount.value > 0) {
+            discount = Math.min(currentDiscount.value, getOrderTotal());
+            discountHtml = `
+                <div class="flex justify-between text-green-700 mb-2">
+                    <span>Descuento (${currentDiscount.reason}):</span>
+                    <span>-$${discount.toLocaleString()}</span>
+                </div>
+            `;
+        }
+        
         // Create page content
         const pageContent = document.createElement('div');
         pageContent.className = 'receipt-container';
@@ -792,7 +861,6 @@ function downloadReceipt() {
                     ${totalPages > 1 ? `<p><span class="font-medium">Página:</span> ${pageIndex + 1} de ${totalPages}</p>` : ''}
                 </div>
             </div>
-                                        
             <table style="width: 100%; margin-bottom: ${isMobile ? '10px' : '15px'};">
                 <thead>
                     <tr class="border-b border-gray-200">
@@ -814,14 +882,13 @@ function downloadReceipt() {
                     `).join('')}
                 </tbody>
             </table>
-                                        
+            ${discountHtml}
             <div class="border-t border-gray-200 pt-3">
                 <div class="flex justify-between font-semibold" style="font-size: ${isMobile ? '14px' : '16px'}">
-                    <span>Total ${totalPages > 1 ? `(Página ${pageIndex + 1})` : ''}:</span>
-                    <span>$${pageTotal.toLocaleString()}</span>
+                    <span>Total${pageIndex === totalPages - 1 && discount > 0 ? ' (con descuento)' : ''}:</span>
+                    <span>$${(pageIndex === totalPages - 1 ? (getOrderTotal() - discount) : pageTotal).toLocaleString()}</span>
                 </div>
             </div>
-                                        
             ${pageIndex === totalPages - 1 ? `
             ${customerName.value || customerId.value || customerContact.value ? `
             <div class="mt-6 border-t border-gray-200 pt-4">
@@ -831,7 +898,6 @@ function downloadReceipt() {
                 ${customerContact.value ? `<p class="text-sm"><span class="font-medium">Contacto:</span> ${customerContact.value}</p>` : ''}
             </div>
             ` : ''}
-            
             <div class="receipt-footer">
                 <p class="footer-text"><strong>Sistema de facturación de Bahia Chill ®</strong><br><strong>Todos los derechos reservados</strong></p>
             </div>
@@ -916,6 +982,76 @@ function downloadReceipt() {
             document.body.removeChild(tempContainer);
         });
     }
+}
+
+// Open discount modal
+function openDiscountModal() {
+    if (currentOrder.length === 0) {
+        alert('Debe agregar productos antes de aplicar un descuento.');
+        return;
+    }
+    // Clear fields
+    discountReasonInput.value = currentDiscount ? currentDiscount.reason : '';
+    discountPercentInput.value = currentDiscount ? currentDiscount.percent : '';
+    discountValueInput.value = currentDiscount ? currentDiscount.value : '';
+    discountModal.classList.remove('hidden');
+    setTimeout(() => discountReasonInput.focus(), 100);
+}
+
+// Close discount modal
+function closeDiscountModal() {
+    discountModal.classList.add('hidden');
+}
+
+// Sync % -> $
+function syncDiscountPercentValue() {
+    const percent = parseFloat(discountPercentInput.value) || 0;
+    const total = getOrderTotal();
+    let value = Math.round((percent / 100) * total);
+    discountValueInput.value = value > 0 ? value : '';
+}
+
+// Sync $ -> %
+function syncDiscountValuePercent() {
+    const value = parseFloat(discountValueInput.value) || 0;
+    const total = getOrderTotal();
+    let percent = total > 0 ? (value / total) * 100 : 0;
+    discountPercentInput.value = percent > 0 ? percent.toFixed(2) : '';
+}
+
+// Get total without discount
+function getOrderTotal() {
+    return currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+}
+
+// Apply discount
+function applyDiscount() {
+    const reason = discountReasonInput.value.trim();
+    const percent = parseFloat(discountPercentInput.value) || 0;
+    const value = parseFloat(discountValueInput.value) || 0;
+    const total = getOrderTotal();
+
+    if (!reason) {
+        discountReasonInput.focus();
+        discountReasonInput.classList.add('shake');
+        setTimeout(() => discountReasonInput.classList.remove('shake'), 500);
+        return;
+    }
+    if ((percent <= 0 && value <= 0) || value > total || percent > 100) {
+        alert('Ingrese un descuento válido.');
+        return;
+    }
+    // Calculate both values to save
+    const discountValue = value > 0 ? value : Math.round((percent / 100) * total);
+    const discountPercent = percent > 0 ? percent : (total > 0 ? (value / total) * 100 : 0);
+
+    currentDiscount = {
+        reason,
+        value: discountValue,
+        percent: discountPercent
+    };
+    closeDiscountModal();
+    updateOrderSummary();
 }
 
 // Print receipt
