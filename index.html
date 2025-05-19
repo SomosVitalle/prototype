@@ -135,6 +135,11 @@
                                 <span>Total:</span>
                                 <span id="total">$0</span>
                             </div>
+                            <!-- Descuento aplicado -->
+                            <div id="discount-row" class="flex justify-between text-sm text-green-700 mt-2 hidden">
+                                <span>Descuento (<span id="discount-reason"></span>):</span>
+                                <span id="discount-amount"></span>
+                            </div>
                         </div>
                                                         
                         <!-- Customer Info -->
@@ -152,6 +157,10 @@
                                                         
                         <!-- Action Buttons -->
                         <div class="mt-6 space-y-2">
+                            <!-- Botón de descuento -->
+                            <button id="discount-btn" class="w-full py-2 px-4 bg-green-100 text-green-800 rounded-md font-medium hover:bg-green-200 transition duration-200">
+                                <i class="fas fa-percent mr-2"></i>Descuento
+                            </button>
                             <button id="clear-order-btn" class="w-full py-2 px-4 bg-gray-200 text-gray-700 rounded-md font-medium hover:bg-gray-300 transition duration-200">
                                 Limpiar Pedido
                             </button>
@@ -271,6 +280,35 @@
             <button id="cancel-device-btn" class="w-full py-2 px-4 bg-gray-200 text-gray-700 rounded-md font-medium hover:bg-gray-300 transition duration-200">
                 Cancelar
             </button>
+        </div>
+    </div>
+
+    <!-- Modal de descuento -->
+    <div id="discount-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 fade-in p-6">
+            <h3 class="text-lg font-semibold mb-4 text-gray-800">Aplicar descuento</h3>
+            <div class="mb-4">
+                <label for="discount-reason-input" class="block text-gray-700 mb-1">Motivo del descuento <span class="text-red-500">*</span></label>
+                <input type="text" id="discount-reason-input" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Ej: Cliente frecuente" required>
+            </div>
+            <div class="mb-4 flex space-x-2">
+                <div class="flex-1">
+                    <label for="discount-percent" class="block text-gray-700 mb-1">% Descuento</label>
+                    <input type="number" id="discount-percent" min="0" max="100" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="0">
+                </div>
+                <div class="flex-1">
+                    <label for="discount-value" class="block text-gray-700 mb-1">$ Descuento</label>
+                    <input type="number" id="discount-value" min="0" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="0">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button id="discount-cancel-btn" class="py-2 px-4 bg-gray-200 text-gray-700 rounded-md font-medium hover:bg-gray-300 transition duration-200">
+                    Cancelar
+                </button>
+                <button id="discount-apply-btn" class="py-2 px-4 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition duration-200">
+                    Aplicar
+                </button>
+            </div>
         </div>
     </div>
 
