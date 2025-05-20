@@ -121,7 +121,6 @@ const deviceModal = document.getElementById('device-modal');
 const deviceOptions = document.querySelectorAll('.device-option');
 const cancelDeviceBtn = document.getElementById('cancel-device-btn');
 const orderSummaryPanel = document.getElementById('order-summary-panel');
-const closeOrderSummaryBtn = document.getElementById('close-order-summary-btn');
 
 // --- Descuento ---
 const discountBtn = document.getElementById('discount-btn');
@@ -311,26 +310,17 @@ function init() {
         });
     }
 
-    // Botón para cerrar el resumen del pedido
-    if (closeOrderSummaryBtn && orderSummaryPanel) {
-        closeOrderSummaryBtn.addEventListener('click', () => {
-            orderSummaryPanel.classList.add('hidden');
-        });
-    }
-
-    // Mostrar el resumen si se agrega un producto o se limpia
-    const showOrderSummary = () => orderSummaryPanel.classList.remove('hidden');
-    // Mostrar siempre que se actualiza el resumen
-    const originalUpdateOrderSummary = updateOrderSummary;
-    updateOrderSummary = function() {
-        showOrderSummary();
-        originalUpdateOrderSummary.apply(this, arguments);
-    };
-
-    // Mensajes de descuento en tiempo real
+    // Mensajes de descuento en tiempo real y validación de máximo 100%
     [discountPercent, discountValue, discountPercentProduct, discountValueProduct].forEach(input => {
         if (input) {
             input.addEventListener('input', () => {
+                // Validar que el descuento no supere el 100%
+                if (
+                    (input === discountPercent || input === discountPercentProduct) &&
+                    parseFloat(input.value) > 100
+                ) {
+                    input.value = 100;
+                }
                 previewDiscountMessage();
             });
         }
@@ -1049,8 +1039,10 @@ function previewDiscountMessage() {
             msg = '<span class="text-red-500">Seleccione un producto</span>';
         } else if (!reason) {
             msg = '<span class="text-red-500">Ingrese el motivo</span>';
-        } else if (percent <= 0 && value <= 0) {
+        } else if ((percent <= 0 && value <= 0)) {
             msg = '<span class="text-red-500">Ingrese un valor de descuento</span>';
+        } else if (percent > 100) {
+            msg = '<span class="text-red-500">El descuento no puede superar el 100%</span>';
         } else {
             const product = products.find(p => p.id === productId);
             msg = `<span class="text-green-800">Código aplicado a <b>${product ? product.name : ''}</b></span>`;
@@ -1063,8 +1055,10 @@ function previewDiscountMessage() {
         const value = parseFloat(discountValue.value) || 0;
         if (!reason) {
             msg = '<span class="text-red-500">Ingrese el motivo</span>';
-        } else if (percent <= 0 && value <= 0) {
+        } else if ((percent <= 0 && value <= 0)) {
             msg = '<span class="text-red-500">Ingrese un valor de descuento</span>';
+        } else if (percent > 100) {
+            msg = '<span class="text-red-500">El descuento no puede superar el 100%</span>';
         } else {
             msg = `<span class="text-green-800">Código aplicado al <b>total</b></span>`;
         }
