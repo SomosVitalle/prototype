@@ -799,22 +799,6 @@ body {
     margin-bottom: 0.75rem;
 }
 
-/* Order summary panel button */
-#order-summary-panel .absolute.top-2.right-2 {
-    z-index: 10;
-    background: transparent;
-    border: none;
-    outline: none;
-    font-size: 1.5rem;
-    line-height: 1;
-    cursor: pointer;
-    transition: color 0.2s;
-}
-
-#order-summary-panel .absolute.top-2.right-2:hover {
-    color: #3d819d;
-}
-
 /* Mensaje de descuento aplicado */
 #discount-applied-message {
     margin-bottom: 0.5rem;
