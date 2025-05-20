@@ -621,7 +621,6 @@ function clearOrder() {
 // Clear discount
 function clearDiscount() {
     currentDiscount = null;
-    updateOrderSummary();
 }
 
 // Show receipt
