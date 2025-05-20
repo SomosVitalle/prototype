@@ -116,7 +116,11 @@
                 
                 <!-- Order Summary -->
                 <div>
-                    <div class="bg-white rounded-lg shadow-md p-4 sticky top-4">
+                    <div id="order-summary-panel" class="relative bg-white rounded-lg shadow-md p-4 sticky top-4">
+                        <!-- Botón X para cerrar -->
+                        <button id="close-order-summary-btn" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl" title="Cerrar" style="background:transparent;border:none;outline:none;">
+                            &times;
+                        </button>
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-lg font-semibold text-gray-700">Resumen del Pedido</h2>
                             <span id="current-table" class="px-2 py-1 bg-primary text-white text-sm rounded">Mesa no seleccionada</span>
