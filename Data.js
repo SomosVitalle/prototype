@@ -132,6 +132,9 @@ function init() {
     // Password input dots
     updatePasswordDots();
     
+    // Ocultar la fila de descuento al iniciar
+    discountRow.classList.add('hidden');
+    
     // Event listeners
     passwordInput.addEventListener('input', updatePasswordDots);
     togglePassword.addEventListener('click', togglePasswordVisibility);
@@ -486,7 +489,7 @@ function updateOrderSummary() {
         orderItems.innerHTML = '<div class="text-center text-gray-500 py-4">No hay productos agregados</div>';
         totalSpan.textContent = '$0';
         finalizeOrderBtn.disabled = true;
-        discountRow.classList.add('hidden');
+        discountRow.classList.add('hidden'); // Asegura que esté oculta si no hay productos
         currentDiscount = null; // Solo limpiar el descuento, no abrir/cerrar modal
         return;
     }
@@ -616,6 +619,7 @@ function clearOrder() {
             currentOrder = [];
             clearDiscount();
             updateOrderSummary();
+            discountRow.classList.add('hidden'); // Oculta la fila de descuento al limpiar
             orderItems.classList.remove('order-item-remove');
         }, 300);
     }
@@ -624,6 +628,7 @@ function clearOrder() {
 // Clear discount
 function clearDiscount() {
     currentDiscount = null;
+    discountRow.classList.add('hidden'); // Oculta la fila de descuento al limpiar descuento
 }
 
 // Show receipt
