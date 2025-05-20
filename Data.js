@@ -66,6 +66,9 @@ let pdfGenerationTimeout = null;
 let selectedDevice = null;
 let currentDiscount = null;
 
+// Estado para evitar bucles de sincronización
+let isSyncingDiscount = false;
+
 // DOM Elements
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app-screen');
@@ -148,8 +151,8 @@ function init() {
     discountBtn.addEventListener('click', openDiscountModal);
     discountCancelBtn.addEventListener('click', closeDiscountModal);
     discountApplyBtn.addEventListener('click', applyDiscount);
-    discountPercentInput.addEventListener('input', syncDiscountPercentValue);
-    discountValueInput.addEventListener('input', syncDiscountValuePercent);
+    discountPercentInput.addEventListener('input', onDiscountPercentInput);
+    discountValueInput.addEventListener('input', onDiscountValueInput);
     
     // Device selection
     deviceOptions.forEach(option => {
@@ -484,7 +487,7 @@ function updateOrderSummary() {
         totalSpan.textContent = '$0';
         finalizeOrderBtn.disabled = true;
         discountRow.classList.add('hidden');
-        clearDiscount();
+        currentDiscount = null; // Solo limpiar el descuento, no abrir/cerrar modal
         return;
     }
     
@@ -989,7 +992,7 @@ function openDiscountModal() {
         alert('Debe agregar productos antes de aplicar un descuento.');
         return;
     }
-    // Clear fields
+    // Rellenar campos si ya hay descuento, si no limpiar
     discountReasonInput.value = currentDiscount ? currentDiscount.reason : '';
     discountPercentInput.value = currentDiscount ? currentDiscount.percent : '';
     discountValueInput.value = currentDiscount ? currentDiscount.value : '';
@@ -997,25 +1000,29 @@ function openDiscountModal() {
     setTimeout(() => discountReasonInput.focus(), 100);
 }
 
-// Close discount modal
 function closeDiscountModal() {
     discountModal.classList.add('hidden');
 }
 
-// Sync % -> $
-function syncDiscountPercentValue() {
+// Sincronización bidireccional sin bucles
+function onDiscountPercentInput() {
+    if (isSyncingDiscount) return;
+    isSyncingDiscount = true;
     const percent = parseFloat(discountPercentInput.value) || 0;
     const total = getOrderTotal();
     let value = Math.round((percent / 100) * total);
-    discountValueInput.value = value > 0 ? value : '';
+    discountValueInput.value = percent > 0 ? value : '';
+    isSyncingDiscount = false;
 }
 
-// Sync $ -> %
-function syncDiscountValuePercent() {
+function onDiscountValueInput() {
+    if (isSyncingDiscount) return;
+    isSyncingDiscount = true;
     const value = parseFloat(discountValueInput.value) || 0;
     const total = getOrderTotal();
     let percent = total > 0 ? (value / total) * 100 : 0;
-    discountPercentInput.value = percent > 0 ? percent.toFixed(2) : '';
+    discountPercentInput.value = value > 0 ? percent.toFixed(2) : '';
+    isSyncingDiscount = false;
 }
 
 // Get total without discount
@@ -1040,7 +1047,7 @@ function applyDiscount() {
         alert('Ingrese un descuento válido.');
         return;
     }
-    // Calculate both values to save
+    // Calcula ambos valores para guardar
     const discountValue = value > 0 ? value : Math.round((percent / 100) * total);
     const discountPercent = percent > 0 ? percent : (total > 0 ? (value / total) * 100 : 0);
 
@@ -1049,13 +1056,6 @@ function applyDiscount() {
         value: discountValue,
         percent: discountPercent
     };
-    closeDiscountModal();
-    updateOrderSummary();
-}
-
-// Print receipt
-function printReceipt() {
-    window.print();
 }
 
 // Initialize the app when DOM is loaded
