@@ -289,9 +289,12 @@
     <!-- Receipt Modal (Hidden by default) -->
     <div id="receipt-modal" class="receipt-modal hidden">
         <div class="receipt-content">
-            <div class="receipt-header text-center">
+            <div class="receipt-header text-center relative">
                 <h1 class="text-2xl font-bold">BAHIA CHILL</h1>
                 <p class="text-sm opacity-90">Comanda Digital</p>
+                <button id="close-receipt-btn" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl no-print" title="Cerrar" style="background:transparent;border:none;outline:none;">
+                    &times;
+                </button>
             </div>
             
             <div class="p-6" id="receipt-content">
