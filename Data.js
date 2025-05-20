@@ -116,7 +116,6 @@ const printReceiptBtn = document.getElementById('print-receipt-btn');
 const deviceModal = document.getElementById('device-modal');
 const deviceOptions = document.querySelectorAll('.device-option');
 const cancelDeviceBtn = document.getElementById('cancel-device-btn');
-const discountBtn = document.getElementById('discount-btn');
 const discountModal = document.getElementById('discount-modal');
 const discountReasonInput = document.getElementById('discount-reason-input');
 const discountPercentInput = document.getElementById('discount-percent');
@@ -151,11 +150,6 @@ function init() {
     addToOrderBtn.addEventListener('click', addToOrder);
     downloadReceiptBtn.addEventListener('click', showDeviceSelection);
     printReceiptBtn.addEventListener('click', printReceipt);
-    discountBtn.addEventListener('click', openDiscountModal);
-    discountCancelBtn.addEventListener('click', closeDiscountModal);
-    discountApplyBtn.addEventListener('click', applyDiscount);
-    discountPercentInput.addEventListener('input', onDiscountPercentInput);
-    discountValueInput.addEventListener('input', onDiscountValueInput);
     
     // Device selection
     deviceOptions.forEach(option => {
@@ -989,78 +983,6 @@ function downloadReceipt() {
             document.body.removeChild(tempContainer);
         });
     }
-}
-
-// Open discount modal
-function openDiscountModal() {
-    if (currentOrder.length === 0) {
-        alert('Debe agregar productos antes de aplicar un descuento.');
-        return;
-    }
-    // Rellenar campos si ya hay descuento, si no limpiar
-    discountReasonInput.value = currentDiscount ? currentDiscount.reason : '';
-    discountPercentInput.value = currentDiscount ? currentDiscount.percent : '';
-    discountValueInput.value = currentDiscount ? currentDiscount.value : '';
-    discountModal.classList.remove('hidden');
-    setTimeout(() => discountReasonInput.focus(), 100);
-}
-
-function closeDiscountModal() {
-    discountModal.classList.add('hidden');
-}
-
-// Sincronización bidireccional sin bucles
-function onDiscountPercentInput() {
-    if (isSyncingDiscount) return;
-    isSyncingDiscount = true;
-    const percent = parseFloat(discountPercentInput.value) || 0;
-    const total = getOrderTotal();
-    let value = Math.round((percent / 100) * total);
-    discountValueInput.value = percent > 0 ? value : '';
-    isSyncingDiscount = false;
-}
-
-function onDiscountValueInput() {
-    if (isSyncingDiscount) return;
-    isSyncingDiscount = true;
-    const value = parseFloat(discountValueInput.value) || 0;
-    const total = getOrderTotal();
-    let percent = total > 0 ? (value / total) * 100 : 0;
-    discountPercentInput.value = value > 0 ? percent.toFixed(2) : '';
-    isSyncingDiscount = false;
-}
-
-// Get total without discount
-function getOrderTotal() {
-    return currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-}
-
-// Apply discount
-function applyDiscount() {
-    const reason = discountReasonInput.value.trim();
-    const percent = parseFloat(discountPercentInput.value) || 0;
-    const value = parseFloat(discountValueInput.value) || 0;
-    const total = getOrderTotal();
-
-    if (!reason) {
-        discountReasonInput.focus();
-        discountReasonInput.classList.add('shake');
-        setTimeout(() => discountReasonInput.classList.remove('shake'), 500);
-        return;
-    }
-    if ((percent <= 0 && value <= 0) || value > total || percent > 100) {
-        alert('Ingrese un descuento válido.');
-        return;
-    }
-    // Calcula ambos valores para guardar
-    const discountValue = value > 0 ? value : Math.round((percent / 100) * total);
-    const discountPercent = percent > 0 ? percent : (total > 0 ? (value / total) * 100 : 0);
-
-    currentDiscount = {
-        reason,
-        value: discountValue,
-        percent: discountPercent
-    };
 }
 
 // Initialize the app when DOM is loaded
