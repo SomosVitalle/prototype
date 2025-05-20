@@ -120,6 +120,8 @@ const printReceiptBtn = document.getElementById('print-receipt-btn');
 const deviceModal = document.getElementById('device-modal');
 const deviceOptions = document.querySelectorAll('.device-option');
 const cancelDeviceBtn = document.getElementById('cancel-device-btn');
+const orderSummaryPanel = document.getElementById('order-summary-panel');
+const closeOrderSummaryBtn = document.getElementById('close-order-summary-btn');
 
 // --- Descuento ---
 const discountBtn = document.getElementById('discount-btn');
@@ -307,6 +309,40 @@ function init() {
         closeReceiptBtn.addEventListener('click', () => {
             receiptModal.classList.add('hidden');
         });
+    }
+
+    // Botón para cerrar el resumen del pedido
+    if (closeOrderSummaryBtn && orderSummaryPanel) {
+        closeOrderSummaryBtn.addEventListener('click', () => {
+            orderSummaryPanel.classList.add('hidden');
+        });
+    }
+
+    // Mostrar el resumen si se agrega un producto o se limpia
+    const showOrderSummary = () => orderSummaryPanel.classList.remove('hidden');
+    // Mostrar siempre que se actualiza el resumen
+    const originalUpdateOrderSummary = updateOrderSummary;
+    updateOrderSummary = function() {
+        showOrderSummary();
+        originalUpdateOrderSummary.apply(this, arguments);
+    };
+
+    // Mensajes de descuento en tiempo real
+    [discountPercent, discountValue, discountPercentProduct, discountValueProduct].forEach(input => {
+        if (input) {
+            input.addEventListener('input', () => {
+                previewDiscountMessage();
+            });
+        }
+    });
+    if (discountProductSelect) {
+        discountProductSelect.addEventListener('change', previewDiscountMessage);
+    }
+    if (discountReasonInputProduct) {
+        discountReasonInputProduct.addEventListener('input', previewDiscountMessage);
+    }
+    if (discountReasonInput) {
+        discountReasonInput.addEventListener('input', previewDiscountMessage);
     }
 }
 
@@ -689,6 +725,23 @@ function updateOrderSummary() {
     setTimeout(() => {
         totalSpan.classList.remove('pulse');
     }, 500);
+
+    // Mensaje visual de descuento aplicado
+    const discountMsg = document.getElementById('discount-applied-message');
+    if (discountAmount > 0 && discountState.reason) {
+        if (!discountMsg) {
+            const msgDiv = document.createElement('div');
+            msgDiv.id = 'discount-applied-message';
+            msgDiv.className = 'text-green-800 text-center text-sm mb-2 font-medium';
+            msgDiv.innerHTML = `Descuento aplicado: <b>${discountState.type === 'product' ? 'Producto' : 'Total'}</b> (${discountState.reason})`;
+            orderItems.parentNode.insertBefore(msgDiv, orderItems);
+        } else {
+            discountMsg.innerHTML = `Descuento aplicado: <b>${discountState.type === 'product' ? 'Producto' : 'Total'}</b> (${discountState.reason})`;
+            discountMsg.className = 'text-green-800 text-center text-sm mb-2 font-medium';
+        }
+    } else if (discountMsg) {
+        discountMsg.remove();
+    }
 }
 
 // Edit order item
@@ -980,6 +1033,63 @@ function downloadReceipt() {
         pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
         pdf.save('recibo-bahia-chill.pdf');
     });
+}
+
+function previewDiscountMessage() {
+    // Mensaje en el modal de descuento
+    let msg = '';
+    if (!discountModal || discountModal.classList.contains('hidden')) return;
+    if (!discountStepProduct.classList.contains('hidden')) {
+        // Por producto
+        const productId = parseInt(discountProductSelect.value);
+        const reason = discountReasonInputProduct.value.trim();
+        const percent = parseFloat(discountPercentProduct.value) || 0;
+        const value = parseFloat(discountValueProduct.value) || 0;
+        if (!productId) {
+            msg = '<span class="text-red-500">Seleccione un producto</span>';
+        } else if (!reason) {
+            msg = '<span class="text-red-500">Ingrese el motivo</span>';
+        } else if (percent <= 0 && value <= 0) {
+            msg = '<span class="text-red-500">Ingrese un valor de descuento</span>';
+        } else {
+            const product = products.find(p => p.id === productId);
+            msg = `<span class="text-green-800">Código aplicado a <b>${product ? product.name : ''}</b></span>`;
+        }
+        setDiscountModalMessage(msg, 'product');
+    } else if (!discountStepTotal.classList.contains('hidden')) {
+        // Al total
+        const reason = discountReasonInput.value.trim();
+        const percent = parseFloat(discountPercent.value) || 0;
+        const value = parseFloat(discountValue.value) || 0;
+        if (!reason) {
+            msg = '<span class="text-red-500">Ingrese el motivo</span>';
+        } else if (percent <= 0 && value <= 0) {
+            msg = '<span class="text-red-500">Ingrese un valor de descuento</span>';
+        } else {
+            msg = `<span class="text-green-800">Código aplicado al <b>total</b></span>`;
+        }
+        setDiscountModalMessage(msg, 'total');
+    }
+}
+
+function setDiscountModalMessage(msg, type) {
+    let container;
+    if (type === 'product') {
+        container = discountStepProduct.querySelector('.discount-message');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'discount-message mb-2 text-center text-sm';
+            discountStepProduct.insertBefore(container, discountStepProduct.firstChild.nextSibling);
+        }
+    } else if (type === 'total') {
+        container = discountStepTotal.querySelector('.discount-message');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'discount-message mb-2 text-center text-sm';
+            discountStepTotal.insertBefore(container, discountStepTotal.firstChild.nextSibling);
+        }
+    }
+    if (container) container.innerHTML = msg;
 }
 
 // Initialize the app when DOM is loaded
