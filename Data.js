@@ -914,4 +914,26 @@ function applyDiscount() {
 }
 
 function printReceipt() {
-    // Oculta el resto de la UI y muestra solo el re
+    // Oculta el resto de la UI y muestra solo el recibo para impresión
+    const originalDisplay = [];
+    const appScreen = document.getElementById('app-screen');
+    const loginScreen = document.getElementById('login-screen');
+    if (appScreen) {
+        originalDisplay.push([appScreen, appScreen.style.display]);
+        appScreen.style.display = 'none';
+    }
+    if (loginScreen) {
+        originalDisplay.push([loginScreen, loginScreen.style.display]);
+        loginScreen.style.display = 'none';
+    }
+    window.print();
+    // Restaurar la UI después de imprimir
+    setTimeout(() => {
+        originalDisplay.forEach(([el, display]) => {
+            el.style.display = display;
+        });
+    }, 500);
+}
+
+// Initialize the app when DOM is loaded
+document.addEventListener('DOMContentLoaded', init);
