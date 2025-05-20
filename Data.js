@@ -64,10 +64,6 @@ let currentProduct = null;
 let editingIndex = null;
 let pdfGenerationTimeout = null;
 let selectedDevice = null;
-let currentDiscount = null;
-
-// Estado para evitar bucles de sincronización
-let isSyncingDiscount = false;
 
 // DOM Elements
 const loginScreen = document.getElementById('login-screen');
@@ -116,23 +112,11 @@ const printReceiptBtn = document.getElementById('print-receipt-btn');
 const deviceModal = document.getElementById('device-modal');
 const deviceOptions = document.querySelectorAll('.device-option');
 const cancelDeviceBtn = document.getElementById('cancel-device-btn');
-const discountModal = document.getElementById('discount-modal');
-const discountReasonInput = document.getElementById('discount-reason-input');
-const discountPercentInput = document.getElementById('discount-percent');
-const discountValueInput = document.getElementById('discount-value');
-const discountCancelBtn = document.getElementById('discount-cancel-btn');
-const discountApplyBtn = document.getElementById('discount-apply-btn');
-const discountRow = document.getElementById('discount-row');
-const discountReasonSpan = document.getElementById('discount-reason');
-const discountAmountSpan = document.getElementById('discount-amount');
 
 // Initialize the app
 function init() {
     // Password input dots
     updatePasswordDots();
-    
-    // Ocultar la fila de descuento al iniciar
-    discountRow.classList.add('hidden');
     
     // Event listeners
     passwordInput.addEventListener('input', updatePasswordDots);
@@ -181,9 +165,6 @@ function init() {
         }
         if (e.target === deviceModal) {
             deviceModal.classList.add('hidden');
-        }
-        if (e.target === discountModal) {
-            closeDiscountModal();
         }
     });
     
@@ -274,7 +255,6 @@ function handleLogout() {
     currentUser = null;
     currentTable = null;
     currentOrder = [];
-    clearDiscount();
     
     // Reset form fields
     usernameInput.value = '';
@@ -309,14 +289,12 @@ function handleTableSelect() {
             if (confirm('¿Está seguro de cambiar de mesa? Se perderá el pedido actual.')) {
                 selectTable(table);
                 clearOrder();
-                clearDiscount();
             } else {
                 // Revert to previous selection
                 tableSelect.value = currentTable ? currentTable.id : '';
             }
         } else {
             selectTable(table);
-            clearDiscount();
         }
     }
 }
@@ -483,8 +461,6 @@ function updateOrderSummary() {
         orderItems.innerHTML = '<div class="text-center text-gray-500 py-4">No hay productos agregados</div>';
         totalSpan.textContent = '$0';
         finalizeOrderBtn.disabled = true;
-        discountRow.classList.add('hidden'); // Asegura que esté oculta si no hay productos
-        currentDiscount = null; // Solo limpiar el descuento, no abrir/cerrar modal
         return;
     }
     
@@ -541,18 +517,7 @@ function updateOrderSummary() {
         orderItems.appendChild(orderItem);
     });
     
-    // Apply discount if exists
-    let discount = 0;
-    if (currentDiscount && currentDiscount.value > 0) {
-        discount = Math.min(currentDiscount.value, total);
-        discountRow.classList.remove('hidden');
-        discountReasonSpan.textContent = currentDiscount.reason;
-        discountAmountSpan.textContent = `- $${discount.toLocaleString()}`;
-    } else {
-        discountRow.classList.add('hidden');
-    }
-    
-    totalSpan.textContent = `$${(total - discount).toLocaleString()}`;
+    totalSpan.textContent = `$${total.toLocaleString()}`;
     
     // Add pulse animation to total
     totalSpan.classList.add('pulse');
@@ -611,18 +576,10 @@ function clearOrder() {
         
         setTimeout(() => {
             currentOrder = [];
-            clearDiscount();
             updateOrderSummary();
-            discountRow.classList.add('hidden'); // Oculta la fila de descuento al limpiar
             orderItems.classList.remove('order-item-remove');
         }, 300);
     }
-}
-
-// Clear discount
-function clearDiscount() {
-    currentDiscount = null;
-    discountRow.classList.add('hidden'); // Oculta la fila de descuento al limpiar descuento
 }
 
 // Show receipt
@@ -648,18 +605,6 @@ function showReceipt() {
         currentOrder.forEach(item => {
             total += item.product.price * item.quantity;
         });
-        
-        let discountHtml = '';
-        let discount = 0;
-        if (currentDiscount && currentDiscount.value > 0) {
-            discount = Math.min(currentDiscount.value, total);
-            discountHtml = `
-                <div class="flex justify-between text-green-700 mb-2">
-                    <span>Descuento (${currentDiscount.reason}):</span>
-                    <span>-$${discount.toLocaleString()}</span>
-                </div>
-            `;
-        }
         
         // Format date and time
         const now = new Date();
@@ -713,12 +658,10 @@ function showReceipt() {
                     </tbody>
                 </table>
                                             
-                ${discountHtml}
-                                            
                 <div class="border-t border-gray-200 pt-3">
                     <div class="flex justify-between font-semibold text-lg">
                         <span>Total:</span>
-                        <span>$${(total - discount).toLocaleString()}</span>
+                        <span>$${total.toLocaleString()}</span>
                     </div>
                 </div>
                                             
@@ -828,19 +771,6 @@ function downloadReceipt() {
             hour12: true
         }).toUpperCase();
         
-        // Only show discount and final total on the last page
-        let discountHtml = '';
-        let discount = 0;
-        if (pageIndex === totalPages - 1 && currentDiscount && currentDiscount.value > 0) {
-            discount = Math.min(currentDiscount.value, getOrderTotal());
-            discountHtml = `
-                <div class="flex justify-between text-green-700 mb-2">
-                    <span>Descuento (${currentDiscount.reason}):</span>
-                    <span>-$${discount.toLocaleString()}</span>
-                </div>
-            `;
-        }
-        
         // Create page content
         const pageContent = document.createElement('div');
         pageContent.className = 'receipt-container';
@@ -883,11 +813,10 @@ function downloadReceipt() {
                     `).join('')}
                 </tbody>
             </table>
-            ${discountHtml}
             <div class="border-t border-gray-200 pt-3">
                 <div class="flex justify-between font-semibold" style="font-size: ${isMobile ? '14px' : '16px'}">
-                    <span>Total${pageIndex === totalPages - 1 && discount > 0 ? ' (con descuento)' : ''}:</span>
-                    <span>$${(pageIndex === totalPages - 1 ? (getOrderTotal() - discount) : pageTotal).toLocaleString()}</span>
+                    <span>Total:</span>
+                    <span>$${pageTotal.toLocaleString()}</span>
                 </div>
             </div>
             ${pageIndex === totalPages - 1 ? `
