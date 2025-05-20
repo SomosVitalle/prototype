@@ -300,6 +300,14 @@ function init() {
             }
         });
     }
+
+    // Cerrar modal de recibo al hacer clic en el botón de cierre
+    const closeReceiptBtn = document.getElementById('close-receipt-btn');
+    if (closeReceiptBtn) {
+        closeReceiptBtn.addEventListener('click', () => {
+            receiptModal.classList.add('hidden');
+        });
+    }
 }
 
 // Toggle password visibility
@@ -808,7 +816,6 @@ function showReceipt() {
                         <p><span class="font-medium">Mesa:</span> ${currentTable.label}</p>
                         <p><span class="font-medium">Atendido por:</span> ${currentUser.username}</p>
                     </div>
-                </div>
                                             
                 <table class="w-full mb-4">
                     <thead>
