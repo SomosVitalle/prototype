@@ -942,5 +942,45 @@ function printReceipt() {
     }, 500);
 }
 
+// Descargar recibo como PDF centrado
+function downloadReceipt() {
+    const receiptContainer = receiptContent.querySelector('.receipt-container');
+    if (!receiptContainer) return;
+
+    // Opciones de tamaño según dispositivo
+    let pdfWidth, pdfHeight;
+    if (selectedDevice === 'mobile') {
+        pdfWidth = 80; // mm
+        pdfHeight = 150; // mm, estimado
+    } else {
+        pdfWidth = 80; // mm
+        pdfHeight = 120; // mm, estimado
+    }
+
+    // Centrar el canvas en una hoja blanca
+    html2canvas(receiptContainer, {
+        backgroundColor: '#fff',
+        scale: 2,
+        useCORS: true
+    }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new window.jspdf.jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [pdfWidth, pdfHeight]
+        });
+        // Calcular centrado
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfPageWidth = pdf.internal.pageSize.getWidth();
+        const pdfPageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfPageWidth * 0.95; // dejar margen
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const x = (pdfPageWidth - imgWidth) / 2;
+        const y = (pdfPageHeight - imgHeight) / 2;
+        pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+        pdf.save('recibo-bahia-chill.pdf');
+    });
+}
+
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', init);
