@@ -798,3 +798,31 @@ body {
 #discount-modal .space-y-3 > *:not(:last-child) {
     margin-bottom: 0.75rem;
 }
+
+/* Order summary panel button */
+#order-summary-panel .absolute.top-2.right-2 {
+    z-index: 10;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+#order-summary-panel .absolute.top-2.right-2:hover {
+    color: #3d819d;
+}
+
+/* Mensaje de descuento aplicado */
+#discount-applied-message {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #15803d;
+    background: #dcfce7;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    text-align: center;
+    font-size: 0.97em;
+}
