@@ -65,6 +65,14 @@ let editingIndex = null;
 let pdfGenerationTimeout = null;
 let selectedDevice = null;
 
+let discountState = {
+    type: null, // 'total' | 'product'
+    reason: '',
+    percent: 0,
+    value: 0,
+    productId: null // solo para tipo 'product'
+};
+
 // DOM Elements
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app-screen');
@@ -112,6 +120,30 @@ const printReceiptBtn = document.getElementById('print-receipt-btn');
 const deviceModal = document.getElementById('device-modal');
 const deviceOptions = document.querySelectorAll('.device-option');
 const cancelDeviceBtn = document.getElementById('cancel-device-btn');
+
+// --- Descuento ---
+const discountBtn = document.getElementById('discount-btn');
+const discountModal = document.getElementById('discount-modal');
+const discountStepType = document.getElementById('discount-step-type');
+const discountStepProduct = document.getElementById('discount-step-product');
+const discountStepTotal = document.getElementById('discount-step-total');
+const discountTypeProductBtn = document.getElementById('discount-type-product');
+const discountTypeTotalBtn = document.getElementById('discount-type-total');
+const discountCancelBtn1 = document.getElementById('discount-cancel-btn-1');
+const discountProductSelect = document.getElementById('discount-product-select');
+const discountReasonInputProduct = document.getElementById('discount-reason-input-product');
+const discountPercentProduct = document.getElementById('discount-percent-product');
+const discountValueProduct = document.getElementById('discount-value-product');
+const discountBackBtnProduct = document.getElementById('discount-back-btn-product');
+const discountApplyBtnProduct = document.getElementById('discount-apply-btn-product');
+const discountReasonInput = document.getElementById('discount-reason-input');
+const discountPercent = document.getElementById('discount-percent');
+const discountValue = document.getElementById('discount-value');
+const discountBackBtnTotal = document.getElementById('discount-back-btn-total');
+const discountApplyBtn = document.getElementById('discount-apply-btn');
+const discountRow = document.getElementById('discount-row');
+const discountReasonSpan = document.getElementById('discount-reason');
+const discountAmountSpan = document.getElementById('discount-amount');
 
 // Initialize the app
 function init() {
@@ -174,6 +206,100 @@ function init() {
             searchResults.classList.add('hidden');
         }
     });
+
+    // Mostrar modal de descuento
+    if (discountBtn) {
+        discountBtn.addEventListener('click', () => {
+            showDiscountStep('type');
+            discountModal.classList.remove('hidden');
+        });
+    }
+
+    // Cancelar desde selección de tipo
+    if (discountCancelBtn1) {
+        discountCancelBtn1.addEventListener('click', () => {
+            discountModal.classList.add('hidden');
+        });
+    }
+
+    // Selección de tipo de descuento
+    if (discountTypeProductBtn) {
+        discountTypeProductBtn.addEventListener('click', () => {
+            showDiscountStep('product');
+            fillDiscountProductSelect();
+        });
+    }
+    if (discountTypeTotalBtn) {
+        discountTypeTotalBtn.addEventListener('click', () => {
+            showDiscountStep('total');
+        });
+    }
+
+    // Atrás en cada paso
+    if (discountBackBtnProduct) {
+        discountBackBtnProduct.addEventListener('click', () => {
+            showDiscountStep('type');
+        });
+    }
+    if (discountBackBtnTotal) {
+        discountBackBtnTotal.addEventListener('click', () => {
+            showDiscountStep('type');
+        });
+    }
+
+    // Aplicar descuento por producto
+    if (discountApplyBtnProduct) {
+        discountApplyBtnProduct.addEventListener('click', () => {
+            const productId = parseInt(discountProductSelect.value);
+            const reason = discountReasonInputProduct.value.trim();
+            const percent = parseFloat(discountPercentProduct.value) || 0;
+            const value = parseFloat(discountValueProduct.value) || 0;
+            if (!productId || !reason || (percent <= 0 && value <= 0)) {
+                alert('Complete todos los campos y un valor de descuento válido.');
+                return;
+            }
+            discountState = {
+                type: 'product',
+                reason,
+                percent,
+                value,
+                productId
+            };
+            applyDiscount();
+            discountModal.classList.add('hidden');
+        });
+    }
+
+    // Aplicar descuento al total
+    if (discountApplyBtn) {
+        discountApplyBtn.addEventListener('click', () => {
+            const reason = discountReasonInput.value.trim();
+            const percent = parseFloat(discountPercent.value) || 0;
+            const value = parseFloat(discountValue.value) || 0;
+            if (!reason || (percent <= 0 && value <= 0)) {
+                alert('Complete todos los campos y un valor de descuento válido.');
+                return;
+            }
+            discountState = {
+                type: 'total',
+                reason,
+                percent,
+                value,
+                productId: null
+            };
+            applyDiscount();
+            discountModal.classList.add('hidden');
+        });
+    }
+
+    // Ocultar modal al hacer click fuera
+    if (discountModal) {
+        discountModal.addEventListener('click', (e) => {
+            if (e.target === discountModal) {
+                discountModal.classList.add('hidden');
+            }
+        });
+    }
 }
 
 // Toggle password visibility
@@ -255,6 +381,7 @@ function handleLogout() {
     currentUser = null;
     currentTable = null;
     currentOrder = [];
+    discountState = { type: null, reason: '', percent: 0, value: 0, productId: null };
     
     // Reset form fields
     usernameInput.value = '';
@@ -476,8 +603,18 @@ function updateOrderSummary() {
         orderItems.classList.remove('two-columns');
     }
     
+    let discountAmount = 0;
     currentOrder.forEach((item, index) => {
-        const itemTotal = item.product.price * item.quantity;
+        let itemTotal = item.product.price * item.quantity;
+        // Descuento por producto
+        if (discountState.type === 'product' && discountState.productId === item.product.id) {
+            if (discountState.percent > 0) {
+                discountAmount += itemTotal * (discountState.percent / 100);
+            } else if (discountState.value > 0) {
+                // Solo una vez por producto, no por cantidad
+                discountAmount += discountState.value;
+            }
+        }
         total += itemTotal;
         
         const orderItem = document.createElement('div');
@@ -517,7 +654,27 @@ function updateOrderSummary() {
         orderItems.appendChild(orderItem);
     });
     
-    totalSpan.textContent = `$${total.toLocaleString()}`;
+    // Descuento al total
+    if (discountState.type === 'total') {
+        if (discountState.percent > 0) {
+            discountAmount = total * (discountState.percent / 100);
+        } else if (discountState.value > 0) {
+            discountAmount = discountState.value;
+        }
+    }
+    
+    // Mostrar descuento si existe
+    if (discountAmount > 0 && discountState.reason) {
+        discountRow.classList.remove('hidden');
+        discountReasonSpan.textContent = discountState.reason;
+        discountAmountSpan.textContent = `- $${discountAmount.toLocaleString()}`;
+        totalSpan.textContent = `$${(total - discountAmount).toLocaleString()}`;
+    } else {
+        discountRow.classList.add('hidden');
+        discountReasonSpan.textContent = '';
+        discountAmountSpan.textContent = '';
+        totalSpan.textContent = `$${total.toLocaleString()}`;
+    }
     
     // Add pulse animation to total
     totalSpan.classList.add('pulse');
@@ -569,6 +726,7 @@ function deleteOrderItem(index) {
 
 // Clear order
 function clearOrder() {
+    discountState = { type: null, reason: '', percent: 0, value: 0, productId: null };
     if (currentOrder.length === 0) return;
     
     if (confirm('¿Está seguro de limpiar el pedido actual?')) {
@@ -602,9 +760,25 @@ function showReceipt() {
     setTimeout(() => {
         // Calculate total
         let total = 0;
+        let discountAmount = 0;
         currentOrder.forEach(item => {
-            total += item.product.price * item.quantity;
+            let itemTotal = item.product.price * item.quantity;
+            if (discountState.type === 'product' && discountState.productId === item.product.id) {
+                if (discountState.percent > 0) {
+                    discountAmount += itemTotal * (discountState.percent / 100);
+                } else if (discountState.value > 0) {
+                    discountAmount += discountState.value;
+                }
+            }
+            total += itemTotal;
         });
+        if (discountState.type === 'total') {
+            if (discountState.percent > 0) {
+                discountAmount = total * (discountState.percent / 100);
+            } else if (discountState.value > 0) {
+                discountAmount = discountState.value;
+            }
+        }
         
         // Format date and time
         const now = new Date();
@@ -663,6 +837,16 @@ function showReceipt() {
                         <span>Total:</span>
                         <span>$${total.toLocaleString()}</span>
                     </div>
+                    ${discountAmount > 0 && discountState.reason ? `
+                    <div class="flex justify-between text-green-700 text-sm mt-2">
+                        <span>Descuento (${discountState.reason}):</span>
+                        <span>- $${discountAmount.toLocaleString()}</span>
+                    </div>
+                    <div class="flex justify-between font-semibold text-lg mt-2">
+                        <span>Total con descuento:</span>
+                        <span>$${(total - discountAmount).toLocaleString()}</span>
+                    </div>
+                    ` : ''}
                 </div>
                                             
                 ${customerName.value || customerId.value || customerContact.value ? `
@@ -689,229 +873,44 @@ function showReceipt() {
     }, 800);
 }
 
-// Show device selection modal
-function showDeviceSelection() {
-    deviceModal.classList.remove('hidden');
-    selectedDevice = null;
+function showDiscountStep(step) {
+    discountStepType.classList.add('hidden');
+    discountStepProduct.classList.add('hidden');
+    discountStepTotal.classList.add('hidden');
+    if (step === 'type') {
+        discountStepType.classList.remove('hidden');
+    } else if (step === 'product') {
+        discountStepProduct.classList.remove('hidden');
+    } else if (step === 'total') {
+        discountStepTotal.classList.remove('hidden');
+    }
 }
 
-// Download receipt as PDF
-function downloadReceipt() {
-    if (currentOrder.length === 0) {
-        alert('No hay productos en el pedido para generar el PDF');
-        return;
-    }
-    
-    // Clear any existing timeout
-    if (pdfGenerationTimeout) {
-        clearTimeout(pdfGenerationTimeout);
-    }
-    
-    const { jsPDF } = window.jspdf;
-    
-    // Determine PDF format based on selected device
-    const isMobile = selectedDevice === 'mobile';
-    const pdfFormat = isMobile ? [80, 297] : 'a4'; // Rollo térmico para móvil, A4 para desktop
-    const pdfOrientation = isMobile ? 'portrait' : 'landscape';
-    
-    const pdf = new jsPDF({
-        orientation: pdfOrientation,
-        unit: 'mm',
-        format: pdfFormat
+function fillDiscountProductSelect() {
+    // Solo productos en el pedido actual
+    discountProductSelect.innerHTML = '';
+    const uniqueProducts = [];
+    currentOrder.forEach(item => {
+        if (!uniqueProducts.some(p => p.id === item.product.id)) {
+            uniqueProducts.push(item.product);
+        }
     });
-    
-    // Create a temporary container for pagination
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
-    tempContainer.style.width = isMobile ? '80mm' : '210mm';
-    document.body.appendChild(tempContainer);
-    
-    // Calculate how many products per page
-    const productsPerPage = isMobile ? 25 : 30;
-    const totalPages = Math.ceil(currentOrder.length / productsPerPage);
-    
-    // Show loading state
-    downloadReceiptBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Generando...';
-    downloadReceiptBtn.disabled = true;
-    
-    // Set timeout for PDF generation (15 seconds max)
-    pdfGenerationTimeout = setTimeout(() => {
-        downloadReceiptBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Descargar PDF';
-        downloadReceiptBtn.disabled = false;
-        document.body.removeChild(tempContainer);
-        alert('La generación del PDF está tomando más tiempo de lo esperado. Por favor intente nuevamente.');
-    }, 15000);
-    
-    // Generate each page
-    generatePage(0);
-    
-    function generatePage(pageIndex) {
-        const startIndex = pageIndex * productsPerPage;
-        const endIndex = Math.min(startIndex + productsPerPage, currentOrder.length);
-        const pageProducts = currentOrder.slice(startIndex, endIndex);
-        
-        // Calculate total for this page
-        let pageTotal = 0;
-        pageProducts.forEach(item => {
-            pageTotal += item.product.price * item.quantity;
-        });
-        
-        // Format date and time
-        const now = new Date();
-        const formattedDate = now.toLocaleDateString('es-CO', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
-        
-        const formattedTime = now.toLocaleTimeString('es-CO', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        }).toUpperCase();
-        
-        // Create page content
-        const pageContent = document.createElement('div');
-        pageContent.className = 'receipt-container';
-        pageContent.style.width = isMobile ? '80mm' : '100%';
-        pageContent.style.padding = isMobile ? '5px' : '15px';
-        pageContent.style.fontSize = isMobile ? '10px' : '12px';
-        
-        pageContent.innerHTML = `
-            <div class="receipt-header">
-                <h1 class="receipt-title" style="font-size: ${isMobile ? '18px' : '22px'}">BAHIA CHILL</h1>
-                <div class="receipt-subheader">
-                    <p style="font-size: ${isMobile ? '12px' : '14px'}">Comanda Digital</p>
-                    <p class="company-info">Bahia Chill S.A.S | NIT: 123456789-0</p>
-                </div>
-                <div class="receipt-meta">
-                    <p>${formattedDate} - ${formattedTime}</p>
-                    <p><span class="font-medium">Mesa:</span> ${currentTable.label}</p>
-                    <p><span class="font-medium">Atendido por:</span> ${currentUser.username}</p>
-                    ${totalPages > 1 ? `<p><span class="font-medium">Página:</span> ${pageIndex + 1} de ${totalPages}</p>` : ''}
-                </div>
-            </div>
-            <table style="width: 100%; margin-bottom: ${isMobile ? '10px' : '15px'};">
-                <thead>
-                    <tr class="border-b border-gray-200">
-                        <th class="text-left py-2" style="font-size: ${isMobile ? '10px' : '12px'}">Producto</th>
-                        <th class="text-right py-2" style="font-size: ${isMobile ? '10px' : '12px'}">Cant.</th>
-                        <th class="text-right py-2" style="font-size: ${isMobile ? '10px' : '12px'}">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${pageProducts.map(item => `
-                        <tr class="border-b border-gray-100">
-                            <td class="py-2" style="font-size: ${isMobile ? '10px' : '12px'}">
-                                ${item.product.name}
-                                ${item.notes ? `<br><span class="text-xs text-gray-500">${item.notes}</span>` : ''}
-                            </td>
-                            <td class="text-right py-2" style="font-size: ${isMobile ? '10px' : '12px'}">${item.quantity}</td>
-                            <td class="text-right py-2" style="font-size: ${isMobile ? '10px' : '12px'}">$${(item.product.price * item.quantity).toLocaleString()}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-            <div class="border-t border-gray-200 pt-3">
-                <div class="flex justify-between font-semibold" style="font-size: ${isMobile ? '14px' : '16px'}">
-                    <span>Total:</span>
-                    <span>$${pageTotal.toLocaleString()}</span>
-                </div>
-            </div>
-            ${pageIndex === totalPages - 1 ? `
-            ${customerName.value || customerId.value || customerContact.value ? `
-            <div class="mt-6 border-t border-gray-200 pt-4">
-                <h2 class="text-lg font-semibold mb-2">Datos del Cliente</h2>
-                ${customerName.value ? `<p class="text-sm mb-1"><span class="font-medium">Nombre:</span> ${customerName.value}</p>` : ''}
-                ${customerId.value ? `<p class="text-sm mb-1"><span class="font-medium">${customerIdType.options[customerIdType.selectedIndex].text}:</span> ${customerId.value}</p>` : ''}
-                ${customerContact.value ? `<p class="text-sm"><span class="font-medium">Contacto:</span> ${customerContact.value}</p>` : ''}
-            </div>
-            ` : ''}
-            <div class="receipt-footer">
-                <p class="footer-text"><strong>Sistema de facturación de Bahia Chill ®</strong><br><strong>Todos los derechos reservados</strong></p>
-            </div>
-            ` : ''}
-        `;
-        
-        tempContainer.innerHTML = '';
-        tempContainer.appendChild(pageContent);
-        
-        // Convert to canvas
-        html2canvas(pageContent, {
-            scale: 2,
-            useCORS: true,
-            logging: true,
-            letterRendering: true,
-            dpi: 300,
-            width: isMobile ? 300 : 800,
-            windowWidth: isMobile ? 300 : 800
-        }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png', 1.0);
-            const imgProps = pdf.getImageProperties(imgData);
-            
-            // Calculate dimensions
-            let pageWidth, pageHeight;
-            if (isMobile) {
-                pageWidth = 80; // Ancho del PDF en mm
-                pageHeight = (imgProps.height * pageWidth) / imgProps.width;
-            } else {
-                // For desktop (A4 landscape)
-                pageWidth = pdf.internal.pageSize.getWidth() - 30; // Margins
-                pageHeight = (imgProps.height * pageWidth) / imgProps.width;
-            }
-            
-            // Add page (except first page)
-            if (pageIndex > 0) {
-                pdf.addPage();
-            }
-            
-            // Add image to PDF
-            pdf.addImage(imgData, 'PNG', isMobile ? 0 : 15, isMobile ? 0 : 15, pageWidth, pageHeight);
-            
-            // Check if we need to generate more pages
-            if (pageIndex < totalPages - 1) {
-                generatePage(pageIndex + 1);
-            } else {
-                // Finalize PDF
-                pdf.setCreator('Bahia Chill SAS');
-                pdf.setLanguage('es-CO');
-                pdf.setProperties({
-                    title: `Comanda ${currentTable.label}`,
-                    subject: 'Recibo de pedido',
-                    author: currentUser.username
-                });
-                
-                const fileName = `Comanda_${currentTable.label.replace(' ', '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
-                pdf.save(fileName);
-                
-                // Reset order
-                currentOrder = [];
-                updateOrderSummary();
-                customerName.value = '';
-                customerId.value = '';
-                customerContact.value = '';
-                receiptModal.classList.add('hidden');
-                
-                // Reset button
-                downloadReceiptBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Descargar PDF';
-                downloadReceiptBtn.disabled = false;
-                
-                // Clean up
-                document.body.removeChild(tempContainer);
-                clearTimeout(pdfGenerationTimeout);
-            }
-        }).catch(error => {
-            console.error('Error generating PDF:', error);
-            alert('Ocurrió un error al generar el PDF. Por favor intente nuevamente.');
-            
-            // Reset button
-            downloadReceiptBtn.innerHTML = '<i class="fas fa-download mr-2"></i> Descargar PDF';
-            downloadReceiptBtn.disabled = false;
-            clearTimeout(pdfGenerationTimeout);
-            document.body.removeChild(tempContainer);
+    if (uniqueProducts.length === 0) {
+        discountProductSelect.innerHTML = '<option value="">No hay productos</option>';
+        discountProductSelect.disabled = true;
+    } else {
+        discountProductSelect.disabled = false;
+        uniqueProducts.forEach(product => {
+            const opt = document.createElement('option');
+            opt.value = product.id;
+            opt.textContent = product.name;
+            discountProductSelect.appendChild(opt);
         });
     }
+}
+
+function applyDiscount() {
+    updateOrderSummary();
 }
 
 // Initialize the app when DOM is loaded
