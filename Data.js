@@ -913,5 +913,5 @@ function applyDiscount() {
     updateOrderSummary();
 }
 
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', init);
+function printReceipt() {
+    // Oculta el resto de la UI y muestra solo el re
