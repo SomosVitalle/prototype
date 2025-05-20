@@ -589,6 +589,7 @@ body {
 }
 #discount-modal input[type="number"] {
   appearance: textfield;
+  -moz-appearance: textfield;
 }
 #discount-modal input,
 #discount-modal textarea {
@@ -695,6 +696,7 @@ body {
     margin: 0;
 }
 #discount-modal input[type="number"] {
+    appearance: textfield;
     -moz-appearance: textfield;
 }
 #discount-modal .flex.space-x-2 > * {
@@ -848,6 +850,4 @@ body {
 #discount-modal .space-x-2 > *:not(:last-child) {
     margin-right: 0.5rem;
 }
-#discount-modal .space-y-3 > *:not(:last-child) {
-    margin-bottom: 0.75rem;
-}
+#
